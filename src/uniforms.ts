@@ -25,15 +25,15 @@ export function syncUniforms(
 }
 
 /**
- * Sync the global color uniforms (u_colorA, u_colorB).
+ * Sync the dynamic color uniforms (u_color0, u_color1, ...).
  */
 export function syncColors(
   renderer: Renderer,
-  colorA: string,
-  colorB: string
+  colors: string[]
 ): void {
-  renderer.setUniform('u_colorA', 'color', colorA);
-  renderer.setUniform('u_colorB', 'color', colorB);
+  for (let i = 0; i < colors.length; i++) {
+    renderer.setUniform(`u_color${i}`, 'color', colors[i]);
+  }
 }
 
 /**

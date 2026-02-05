@@ -3,11 +3,10 @@ import type { Preset } from './types';
 export const blankPreset: Preset = {
   id: 'blank',
   name: 'Blank',
-  description: 'Empty canvas with two colors',
+  description: 'Empty canvas',
   effects: [],
   paramOverrides: {},
-  colorA: '#211961',
-  colorB: '#f99251',
+  colors: [],
 };
 
 export const swirlPreset: Preset = {
@@ -34,8 +33,7 @@ export const swirlPreset: Preset = {
     'vignette.radius': 0.7,
     'film-grain.intensity': 0.08,
   },
-  colorA: '#3c1ea8',
-  colorB: '#ff7130',
+  colors: ['#3c1ea8', '#ff7130'],
 };
 
 export const glowPreset: Preset = {
@@ -60,8 +58,7 @@ export const glowPreset: Preset = {
     'vignette.radius': 0.7,
     'film-grain.intensity': 0.04,
   },
-  colorA: '#432cdc',
-  colorB: '#ff7130',
+  colors: ['#432cdc', '#ff7130'],
 };
 
 export const presets: Preset[] = [blankPreset, swirlPreset, glowPreset];

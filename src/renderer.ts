@@ -218,6 +218,7 @@ export class Renderer {
 
       switch (type) {
         case 'float':
+        case 'select':
           gl.uniform1f(loc, value as number);
           break;
         case 'int':

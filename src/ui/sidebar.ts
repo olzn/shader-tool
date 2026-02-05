@@ -2,17 +2,20 @@ import type { ActiveEffect, EffectBlock, ShaderParam, UniformValue, Preset, Save
 import { createControls } from './controls';
 import { getAllEffects, getEffect, getEffectsByCategory } from '../effects/index';
 
+const MAX_COLORS = 5;
+
 interface SidebarOptions {
   presets: Preset[];
   activePresetId: string | null;
   activeEffects: ActiveEffect[];
   params: ShaderParam[];
   paramValues: Record<string, UniformValue>;
-  colorA: string;
-  colorB: string;
+  colors: string[];
   savedShaders: SavedShader[];
   onPresetSelect: (id: string) => void;
-  onColorChange: (which: 'colorA' | 'colorB', value: string) => void;
+  onColorChange: (index: number, value: string) => void;
+  onAddColor: () => void;
+  onRemoveColor: (index: number) => void;
   onParamChange: (paramId: string, value: UniformValue) => void;
   onAddEffect: (blockId: string) => void;
   onRemoveEffect: (instanceId: string) => void;
@@ -20,6 +23,8 @@ interface SidebarOptions {
   onSave: () => void;
   onLoadSaved: (id: string) => void;
   onDeleteSaved: (id: string) => void;
+  onShareSaved: (id: string) => void;
+  onRenameSaved: (id: string, newName: string) => void;
 }
 
 export function createSidebar(
@@ -27,7 +32,7 @@ export function createSidebar(
   options: SidebarOptions
 ): {
   updateEffects: (effects: ActiveEffect[], params: ShaderParam[], values: Record<string, UniformValue>) => void;
-  updateColors: (colorA: string, colorB: string) => void;
+  updateColors: (colors: string[]) => void;
   updatePreset: (id: string | null) => void;
   updateSaved: (saved: SavedShader[]) => void;
   destroy: () => void;
@@ -59,11 +64,34 @@ export function createSidebar(
   const colorsContainer = document.createElement('div');
   colorsContainer.className = 'control-group';
 
-  const colorAControl = createColorPicker('Color A', options.colorA, (v) => options.onColorChange('colorA', v));
-  const colorBControl = createColorPicker('Color B', options.colorB, (v) => options.onColorChange('colorB', v));
-  colorsContainer.append(colorAControl.element, colorBControl.element);
+  const addColorBtn = document.createElement('button');
+  addColorBtn.className = 'btn add-effect-btn';
+  addColorBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2v8M2 6h8"/></svg> Add Color`;
+  addColorBtn.addEventListener('click', () => options.onAddColor());
+
+  colorsSection.content.appendChild(addColorBtn);
   colorsSection.content.appendChild(colorsContainer);
   container.appendChild(colorsSection.element);
+
+  function renderColors(colors: string[]) {
+    colorsContainer.innerHTML = '';
+    addColorBtn.style.display = colors.length >= MAX_COLORS ? 'none' : '';
+
+    if (colors.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'No colors added';
+      colorsContainer.appendChild(empty);
+      return;
+    }
+
+    for (let i = 0; i < colors.length; i++) {
+      const row = createColorRow(i, colors[i], options.onColorChange, options.onRemoveColor);
+      colorsContainer.appendChild(row);
+    }
+  }
+
+  renderColors(options.colors);
 
   // --- Active Effects section ---
   const effectsSection = createSection('Effects', false);
@@ -92,7 +120,7 @@ export function createSidebar(
   savedSection.content.appendChild(saveBtn);
   savedSection.content.appendChild(savedContainer);
 
-  renderSavedList(savedContainer, options.savedShaders, options.onLoadSaved, options.onDeleteSaved);
+  renderSavedList(savedContainer, options.savedShaders, options.onLoadSaved, options.onDeleteSaved, options.onShareSaved, options.onRenameSaved);
   container.appendChild(savedSection.element);
 
   // --- Effect catalog overlay ---
@@ -249,9 +277,8 @@ export function createSidebar(
     updateEffects(effects, params, values) {
       renderEffects(effects, params, values);
     },
-    updateColors(colorA, colorB) {
-      colorAControl.setValue(colorA);
-      colorBControl.setValue(colorB);
+    updateColors(colors) {
+      renderColors(colors);
     },
     updatePreset(id) {
       container.querySelectorAll('.template-card').forEach(card => {
@@ -259,7 +286,7 @@ export function createSidebar(
       });
     },
     updateSaved(saved) {
-      renderSavedList(savedContainer, saved, options.onLoadSaved, options.onDeleteSaved);
+      renderSavedList(savedContainer, saved, options.onLoadSaved, options.onDeleteSaved, options.onShareSaved, options.onRenameSaved);
     },
     destroy() {
       for (const ctrl of effectControls.values()) ctrl.destroy();
@@ -296,23 +323,21 @@ function createSection(title: string, collapsed: boolean): {
   return { element: section, content };
 }
 
-function createColorPicker(
-  label: string,
-  initialValue: string,
-  onChange: (value: string) => void
-): { element: HTMLElement; setValue: (v: string) => void } {
+function createColorRow(
+  index: number,
+  value: string,
+  onChange: (index: number, value: string) => void,
+  onRemove: (index: number) => void,
+): HTMLElement {
   const wrap = document.createElement('div');
-  wrap.className = 'control';
+  wrap.className = 'control color-row';
 
   wrap.innerHTML = `
-    <div class="control-label">
-      <span class="control-label-text">${label}</span>
-    </div>
     <div class="color-control">
       <div class="color-swatch" data-swatch>
-        <input type="color" value="${initialValue}" data-color-picker />
+        <input type="color" value="${value}" data-color-picker />
       </div>
-      <input type="text" class="color-hex-input" value="${initialValue}" maxlength="7" data-hex-input />
+      <input type="text" class="color-hex-input" value="${value}" maxlength="7" data-hex-input />
     </div>
   `;
 
@@ -320,13 +345,13 @@ function createColorPicker(
   const picker = wrap.querySelector<HTMLInputElement>('[data-color-picker]')!;
   const hexInput = wrap.querySelector<HTMLInputElement>('[data-hex-input]')!;
 
-  swatch.style.backgroundColor = initialValue;
+  swatch.style.backgroundColor = value;
 
   picker.addEventListener('input', () => {
     const v = picker.value;
     hexInput.value = v;
     swatch.style.backgroundColor = v;
-    onChange(v);
+    onChange(index, v);
   });
 
   hexInput.addEventListener('change', () => {
@@ -335,25 +360,27 @@ function createColorPicker(
     if (/^#[0-9a-fA-F]{6}$/.test(v)) {
       picker.value = v;
       swatch.style.backgroundColor = v;
-      onChange(v);
+      onChange(index, v);
     }
   });
 
-  return {
-    element: wrap,
-    setValue(v: string) {
-      picker.value = v;
-      hexInput.value = v;
-      swatch.style.backgroundColor = v;
-    },
-  };
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn btn-ghost btn-icon color-remove-btn';
+  removeBtn.title = 'Remove color';
+  removeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" stroke="currentColor"><path d="M2.75 4.75H15.25"/><path d="M6.75 4.75V2.75C6.75 2.2 7.198 1.75 7.75 1.75H10.25C10.802 1.75 11.25 2.2 11.25 2.75V4.75"/><path d="M7.23206 8.72998L10.7681 12.27"/><path d="M10.7681 8.72998L7.23206 12.27"/><path d="M13.6977 7.75L13.35 14.35C13.294 15.4201 12.416 16.25 11.353 16.25H6.64805C5.58405 16.25 4.70705 15.42 4.65105 14.35L4.30334 7.75"/></g></svg>`;
+  removeBtn.addEventListener('click', () => onRemove(index));
+  wrap.appendChild(removeBtn);
+
+  return wrap;
 }
 
 function renderSavedList(
   container: HTMLElement,
   saved: SavedShader[],
   onLoad: (id: string) => void,
-  onDelete: (id: string) => void
+  onDelete: (id: string) => void,
+  onShare: (id: string) => void,
+  onRename: (id: string, newName: string) => void
 ): void {
   container.innerHTML = '';
   if (saved.length === 0) {
@@ -369,14 +396,69 @@ function renderSavedList(
     item.className = 'saved-item';
 
     const info = document.createElement('div');
-    info.innerHTML = `
-      <div class="saved-item-name">${shader.name}</div>
-      <div class="saved-item-date">${formatDate(shader.savedAt)}</div>
-    `;
+    info.className = 'saved-item-info';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'saved-item-name';
+    nameEl.textContent = shader.name;
+
+    const dateEl = document.createElement('div');
+    dateEl.className = 'saved-item-date';
+    dateEl.textContent = formatDate(shader.savedAt);
+
+    info.append(nameEl, dateEl);
 
     const actions = document.createElement('div');
     actions.className = 'saved-item-actions';
 
+    // Rename button
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'btn btn-ghost btn-icon';
+    renameBtn.title = 'Rename';
+    renameBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/></svg>`;
+    renameBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Replace name with input
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'saved-item-rename-input';
+      input.value = shader.name;
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      const finish = () => {
+        const newName = input.value.trim();
+        if (newName && newName !== shader.name) {
+          onRename(shader.id, newName);
+        } else {
+          input.replaceWith(nameEl);
+        }
+      };
+      input.addEventListener('blur', finish);
+      input.addEventListener('keydown', (ke) => {
+        if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+        if (ke.key === 'Escape') { input.value = shader.name; input.blur(); }
+      });
+    });
+
+    // Share button
+    const shareBtn = document.createElement('button');
+    shareBtn.className = 'btn btn-ghost btn-icon';
+    shareBtn.title = 'Copy share link';
+    shareBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3" cy="6" r="1.5"/><circle cx="9" cy="2.5" r="1.5"/><circle cx="9" cy="9.5" r="1.5"/><path d="M4.3 5.2l3.4-1.9M4.3 6.8l3.4 1.9"/></svg>`;
+    shareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onShare(shader.id);
+      shareBtn.title = 'Copied!';
+      shareBtn.classList.add('copied');
+      setTimeout(() => {
+        shareBtn.title = 'Copy share link';
+        shareBtn.classList.remove('copied');
+      }, 1500);
+    });
+
+    // Delete button
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn btn-ghost btn-icon';
     deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h8M4.5 3V2h3v1M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3"/></svg>`;
@@ -386,7 +468,7 @@ function renderSavedList(
       onDelete(shader.id);
     });
 
-    actions.appendChild(deleteBtn);
+    actions.append(renameBtn, shareBtn, deleteBtn);
     item.append(info, actions);
     item.addEventListener('click', () => onLoad(shader.id));
     list.appendChild(item);

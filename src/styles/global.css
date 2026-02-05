@@ -445,6 +445,27 @@ input[type="range"]:focus::-webkit-slider-thumb {
   border-color: var(--border-focus);
 }
 
+.color-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.color-row .color-control {
+  flex: 1;
+}
+
+.color-remove-btn {
+  flex-shrink: 0;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+
+.color-remove-btn:hover {
+  opacity: 1;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -624,6 +645,50 @@ input[type="range"]:focus::-webkit-slider-thumb {
 
 .saved-item:hover .saved-item-actions {
   opacity: 1;
+}
+
+.saved-item-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-item-rename-input {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-1);
+  color: var(--text-primary);
+  outline: none;
+  width: 100%;
+}
+
+.btn-ghost.copied {
+  color: var(--success);
+}
+
+/* Control select dropdown */
+.control-select {
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.control-select:hover {
+  border-color: var(--border-focus);
+}
+
+.control-select:focus {
+  border-color: var(--accent);
 }
 
 /* Select/Dropdown */

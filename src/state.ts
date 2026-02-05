@@ -45,8 +45,7 @@ class Store {
         activePresetId: this.state.activePresetId,
         activeEffects: this.state.activeEffects,
         paramValues: this.state.paramValues,
-        colorA: this.state.colorA,
-        colorB: this.state.colorB,
+        colors: this.state.colors,
         exportFunctionName: this.state.exportFunctionName,
         usesTexture: this.state.usesTexture,
         vertexType: this.state.vertexType,
@@ -65,6 +64,12 @@ class Store {
       const data = JSON.parse(raw);
       // Validate it has the new shape (activeEffects array)
       if (!Array.isArray(data.activeEffects)) return null;
+      // Migrate from colorA/colorB to colors[]
+      if (!data.colors && data.colorA) {
+        data.colors = [data.colorA, data.colorB].filter(Boolean);
+        delete data.colorA;
+        delete data.colorB;
+      }
       return data;
     } catch {
       return null;

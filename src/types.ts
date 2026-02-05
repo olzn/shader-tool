@@ -1,4 +1,4 @@
-export type ParamControlType = 'float' | 'color' | 'vec2' | 'int' | 'bool';
+export type ParamControlType = 'float' | 'color' | 'vec2' | 'int' | 'bool' | 'select';
 
 export type UniformValue = number | [number, number] | [number, number, number] | string;
 
@@ -15,6 +15,8 @@ export interface ShaderParam {
   group: string;
   /** Display angles in degrees (converted to radians for the GPU) */
   displayUnit?: 'deg';
+  /** Options for 'select' type params */
+  options?: { label: string; value: number }[];
 }
 
 export interface CompileError {
@@ -51,8 +53,7 @@ export interface Preset {
   description: string;
   effects: { blockId: string }[];
   paramOverrides: Record<string, UniformValue>;
-  colorA?: string;
-  colorB?: string;
+  colors?: string[];
 }
 
 export interface AppState {
@@ -60,8 +61,7 @@ export interface AppState {
   activePresetId: string | null;
   activeEffects: ActiveEffect[];
   paramValues: Record<string, UniformValue>;
-  colorA: string;
-  colorB: string;
+  colors: string[];
   compiledFragmentSource: string;
   editorOpen: boolean;
   editorHeight: number;
@@ -81,8 +81,7 @@ export interface SavedShader {
   activePresetId: string | null;
   activeEffects: ActiveEffect[];
   paramValues: Record<string, UniformValue>;
-  colorA: string;
-  colorB: string;
+  colors: string[];
   exportFunctionName: string;
   usesTexture: boolean;
   vertexType: 'simple' | 'uv';

@@ -10,8 +10,9 @@ import { createSidebar } from './ui/sidebar';
 import { createTimeControls } from './ui/time-controls';
 import { createCodeEditor } from './ui/code-editor';
 import { createExportPanel } from './ui/export-panel';
-import { loadSavedShaders, saveShader, deleteSavedShader, savedShaderToState } from './persistence';
+import { loadSavedShaders, saveShader, deleteSavedShader, savedShaderToState, renameSavedShader, encodeShaderUrl, decodeShaderUrl } from './persistence';
 import { bakeShader } from './export/bake';
+import { hexToVec3, formatFloat } from './compiler';
 import { generateTS } from './export/generate-ts';
 import { generateHTML } from './export/generate-html';
 
@@ -23,8 +24,7 @@ const initialState: AppState = {
   activePresetId: blankPreset.id,
   activeEffects: [],
   paramValues: {},
-  colorA: blankPreset.colorA!,
-  colorB: blankPreset.colorB!,
+  colors: blankPreset.colors ?? [],
   compiledFragmentSource: '',
   editorOpen: false,
   editorHeight: 250,
@@ -37,10 +37,16 @@ const initialState: AppState = {
   exportAsync: false,
 };
 
-// Try to restore autosave
-const autosave = Store.loadAutosave();
-if (autosave) {
-  Object.assign(initialState, autosave);
+// Try to restore from shared URL first, then autosave
+const sharedState = decodeShaderUrl(window.location.hash);
+if (sharedState) {
+  Object.assign(initialState, sharedState);
+  window.history.replaceState(null, '', window.location.pathname);
+} else {
+  const autosave = Store.loadAutosave();
+  if (autosave) {
+    Object.assign(initialState, autosave);
+  }
 }
 
 const store = new Store(initialState);
@@ -64,7 +70,7 @@ let codeEditor: ReturnType<typeof createCodeEditor> | null = null;
 // --- Compose and compile ---
 function composeAndCompile(): void {
   const state = store.getState();
-  const result = compose(state.activeEffects);
+  const result = compose(state.activeEffects, state.colors.length);
 
   const errors = renderer.compile(VERTEX_SOURCE, result.glsl);
 
@@ -80,7 +86,7 @@ function composeAndCompile(): void {
     });
 
     // Sync all uniforms
-    syncColors(renderer, state.colorA, state.colorB);
+    syncColors(renderer, state.colors);
     syncUniforms(renderer, result.params, state.paramValues);
   }
 
@@ -203,21 +209,20 @@ function loadPreset(presetId: string): void {
     shaderName: preset.name,
     activeEffects,
     paramValues,
-    colorA: preset.colorA ?? '#211961',
-    colorB: preset.colorB ?? '#f99251',
+    colors: preset.colors ?? [],
   });
 
   nameInput.value = preset.name;
   composeAndCompile();
 
   const state = store.getState();
-  const result = compose(state.activeEffects);
+  const result = compose(state.activeEffects, state.colors.length);
   sidebar.updateEffects(state.activeEffects, result.params, state.paramValues);
-  sidebar.updateColors(state.colorA, state.colorB);
+  sidebar.updateColors(state.colors);
   sidebar.updatePreset(preset.id);
 
   // Re-sync uniforms after compose
-  syncColors(renderer, state.colorA, state.colorB);
+  syncColors(renderer, state.colors);
   syncUniforms(renderer, result.params, state.paramValues);
 }
 
@@ -273,9 +278,10 @@ function toggleEffect(instanceId: string, enabled: boolean): void {
 // --- Helper: refresh sidebar after state changes ---
 function refreshSidebar(): void {
   const state = store.getState();
-  const result = compose(state.activeEffects);
+  const result = compose(state.activeEffects, state.colors.length);
   sidebar.updateEffects(state.activeEffects, result.params, state.paramValues);
-  syncColors(renderer, state.colorA, state.colorB);
+  sidebar.updateColors(state.colors);
+  syncColors(renderer, state.colors);
   syncUniforms(renderer, result.params, state.paramValues);
 }
 
@@ -286,15 +292,28 @@ const sidebar = createSidebar(layout.sidebar, {
   activeEffects: store.getState().activeEffects,
   params: compose(store.getState().activeEffects).params,
   paramValues: store.getState().paramValues,
-  colorA: store.getState().colorA,
-  colorB: store.getState().colorB,
+  colors: store.getState().colors,
   savedShaders: loadSavedShaders(),
   onPresetSelect(id) {
     loadPreset(id);
   },
-  onColorChange(which, value) {
-    store.setState({ [which]: value, activePresetId: null });
-    syncColors(renderer, store.getState().colorA, store.getState().colorB);
+  onColorChange(index, value) {
+    const colors = [...store.getState().colors];
+    colors[index] = value;
+    store.setState({ colors, activePresetId: null });
+    syncColors(renderer, colors);
+  },
+  onAddColor() {
+    const colors = [...store.getState().colors, '#808080'];
+    store.setState({ colors, activePresetId: null });
+    composeAndCompile();
+    refreshSidebar();
+  },
+  onRemoveColor(index) {
+    const colors = store.getState().colors.filter((_, i) => i !== index);
+    store.setState({ colors, activePresetId: null });
+    composeAndCompile();
+    refreshSidebar();
   },
   onParamChange(paramId, value) {
     const state = store.getState();
@@ -329,6 +348,17 @@ const sidebar = createSidebar(layout.sidebar, {
     deleteSavedShader(id);
     sidebar.updateSaved(loadSavedShaders());
   },
+  onShareSaved(id) {
+    const saved = loadSavedShaders().find(s => s.id === id);
+    if (!saved) return;
+    const encoded = encodeShaderUrl(saved);
+    const url = `${window.location.origin}${window.location.pathname}#s=${encoded}`;
+    navigator.clipboard.writeText(url);
+  },
+  onRenameSaved(id, newName) {
+    renameSavedShader(id, newName);
+    sidebar.updateSaved(loadSavedShaders());
+  },
 });
 
 // --- Export panel ---
@@ -347,14 +377,22 @@ const exportPanel = createExportPanel(layout.sidebar, {
 
 function doExport(format: 'ts' | 'html'): void {
   const state = store.getState();
-  const result = compose(state.activeEffects);
+  const result = compose(state.activeEffects, state.colors.length);
 
-  // Bake: replace uniforms with literal values
-  const bakedFragment = bakeShader(
+  // Bake: replace effect param uniforms with literal values
+  let bakedFragment = bakeShader(
     result.glsl,
     result.params,
     state.paramValues
   );
+
+  // Bake color uniforms into literal vec3 values
+  for (let i = 0; i < state.colors.length; i++) {
+    const [r, g, b] = hexToVec3(state.colors[i]);
+    const literal = `vec3(${formatFloat(r)}, ${formatFloat(g)}, ${formatFloat(b)})`;
+    bakedFragment = bakedFragment.replace(new RegExp(`\\bu_color${i}\\b`, 'g'), literal);
+    bakedFragment = bakedFragment.replace(new RegExp(`^\\s*uniform\\s+vec3\\s+u_color${i}\\s*;\\n?`, 'gm'), '');
+  }
 
   if (format === 'ts') {
     const content = generateTS({

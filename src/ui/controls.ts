@@ -70,6 +70,8 @@ function createControl(
       return createVec2Control(param, value as [number, number], onChange);
     case 'bool':
       return createBoolControl(param, value as number, onChange);
+    case 'select':
+      return createSelectControl(param, value as number, onChange);
     default:
       return createSliderControl(param, value as number, onChange);
   }
@@ -275,6 +277,49 @@ function createBoolControl(
   const toggle = wrap.querySelector<HTMLInputElement>('[data-bool-toggle]')!;
   toggle.addEventListener('change', () => {
     onChange(param.id, toggle.checked ? 1 : 0);
+  });
+
+  return wrap;
+}
+
+function createSelectControl(
+  param: ShaderParam,
+  value: number,
+  onChange: (id: string, value: UniformValue) => void
+): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'control';
+  wrap.dataset.paramId = param.id;
+
+  const options = param.options ?? [];
+  const optionsHtml = options
+    .map(o => `<option value="${o.value}"${o.value === value ? ' selected' : ''}>${o.label}</option>`)
+    .join('');
+
+  wrap.innerHTML = `
+    <div class="control-label">
+      <span class="control-label-text">${param.label}</span>
+      <button class="control-reset" title="Reset to default">
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 6a4 4 0 1 1 1.17 2.83"/>
+          <path d="M2 9V6h3"/>
+        </svg>
+      </button>
+    </div>
+    <select class="control-select" data-select>${optionsHtml}</select>
+  `;
+
+  const select = wrap.querySelector<HTMLSelectElement>('[data-select]')!;
+  const resetBtn = wrap.querySelector<HTMLButtonElement>('.control-reset')!;
+
+  select.addEventListener('change', () => {
+    onChange(param.id, parseFloat(select.value));
+  });
+
+  resetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    select.value = String(param.defaultValue);
+    onChange(param.id, param.defaultValue);
   });
 
   return wrap;

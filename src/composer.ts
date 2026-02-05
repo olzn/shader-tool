@@ -19,7 +19,7 @@ export interface ComposeResult {
  * Returns the GLSL source and the resolved parameter list with
  * instance-scoped uniform names.
  */
-export function compose(activeEffects: ActiveEffect[]): ComposeResult {
+export function compose(activeEffects: ActiveEffect[], colorCount: number = 0): ComposeResult {
   const allParams: ShaderParam[] = [];
   const requiredUtils = new Set<UtilId>();
 
@@ -97,8 +97,11 @@ export function compose(activeEffects: ActiveEffect[]): ComposeResult {
   lines.push('precision mediump float;');
   lines.push('uniform float u_time;');
   lines.push('uniform vec2 u_resolution;');
-  lines.push('uniform vec3 u_colorA;');
-  lines.push('uniform vec3 u_colorB;');
+
+  // Dynamic color uniforms
+  for (let i = 0; i < colorCount; i++) {
+    lines.push(`uniform vec3 u_color${i};`);
+  }
 
   if (uniformDeclarations.length > 0) {
     lines.push('');
@@ -111,6 +114,10 @@ export function compose(activeEffects: ActiveEffect[]): ComposeResult {
     lines.push('');
     lines.push(utilsCode.trim());
   }
+
+  // Color ramp function
+  lines.push('');
+  lines.push(generateColorRamp(colorCount));
 
   lines.push('');
   lines.push('void main() {');
@@ -131,7 +138,7 @@ export function compose(activeEffects: ActiveEffect[]): ComposeResult {
     lines.push('');
     lines.push(generators[0].snippet);
     lines.push('');
-    lines.push('  color = mix(u_colorA, u_colorB, clamp(mixFactor, 0.0, 1.0));');
+    lines.push('  color = colorRamp(mixFactor);');
     if (generators[0].postMixSnippet) {
       lines.push('');
       lines.push(generators[0].postMixSnippet);
@@ -146,7 +153,7 @@ export function compose(activeEffects: ActiveEffect[]): ComposeResult {
       lines.push(generators[i].snippet);
       lines.push('');
       lines.push(`  float _layerBlend${i} = smoothstep(0.0, 1.0, abs(mixFactor - 0.5) * 2.0);`);
-      lines.push(`  color = mix(_prevColor${i}, mix(u_colorA, u_colorB, clamp(mixFactor, 0.0, 1.0)), _layerBlend${i});`);
+      lines.push(`  color = mix(_prevColor${i}, colorRamp(mixFactor), _layerBlend${i});`);
       if (generators[i].postMixSnippet) {
         lines.push('');
         lines.push(generators[i].postMixSnippet!);
@@ -154,7 +161,7 @@ export function compose(activeEffects: ActiveEffect[]): ComposeResult {
     }
   } else {
     lines.push('');
-    lines.push('  color = mix(u_colorA, u_colorB, clamp(mixFactor, 0.0, 1.0));');
+    lines.push('  color = colorRamp(mixFactor);');
   }
 
   if (postSnippets.length > 0) {
@@ -202,8 +209,39 @@ function paramTypeToGlsl(type: string): string {
     case 'vec2': return 'vec2';
     case 'int': return 'int';
     case 'bool': return 'float';
+    case 'select': return 'float';
     default: return 'float';
   }
+}
+
+/** Generate the colorRamp() GLSL function based on the number of active colors. */
+function generateColorRamp(colorCount: number): string {
+  if (colorCount === 0) {
+    return `vec3 colorRamp(float t) {
+  return vec3(0.0);
+}`;
+  }
+  if (colorCount === 1) {
+    return `vec3 colorRamp(float t) {
+  return u_color0;
+}`;
+  }
+  if (colorCount === 2) {
+    return `vec3 colorRamp(float t) {
+  return mix(u_color0, u_color1, clamp(t, 0.0, 1.0));
+}`;
+  }
+  // 3+ colors: chain of mix() calls across segments
+  const bodyLines: string[] = [];
+  bodyLines.push(`vec3 colorRamp(float t) {`);
+  bodyLines.push(`  float _ct = clamp(t, 0.0, 1.0) * ${(colorCount - 1).toFixed(1)};`);
+  bodyLines.push(`  vec3 c = u_color0;`);
+  for (let i = 1; i < colorCount; i++) {
+    bodyLines.push(`  c = mix(c, u_color${i}, clamp(_ct - ${(i - 1).toFixed(1)}, 0.0, 1.0));`);
+  }
+  bodyLines.push(`  return c;`);
+  bodyLines.push(`}`);
+  return bodyLines.join('\n');
 }
 
 /** Generate a short random instance ID (6 chars). */
