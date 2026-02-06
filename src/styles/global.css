@@ -375,11 +375,18 @@ html, body {
   transform: rotate(-90deg);
 }
 
-.sidebar-section.collapsed .sidebar-section-content {
-  display: none;
+.sidebar-section-content {
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
 }
 
-.sidebar-section-content {
+.sidebar-section.collapsed .sidebar-section-content {
+  max-height: 0 !important;
+  opacity: 0;
+}
+
+.sidebar-section-content-inner {
   padding: var(--space-1) var(--space-5) var(--space-4) var(--space-7);
 }
 

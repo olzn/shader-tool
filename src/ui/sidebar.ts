@@ -550,13 +550,35 @@ function createSection(title: string, collapsed: boolean): {
       <path d="M3 4.5L6 7.5L9 4.5"/>
     </svg>
   `;
-  header.addEventListener('click', () => section.classList.toggle('collapsed'));
 
   const content = document.createElement('div');
   content.className = 'sidebar-section-content';
+  if (!collapsed) content.style.maxHeight = 'none';
+
+  const inner = document.createElement('div');
+  inner.className = 'sidebar-section-content-inner';
+  content.appendChild(inner);
+
+  header.addEventListener('click', () => {
+    const isCollapsing = !section.classList.contains('collapsed');
+    if (isCollapsing) {
+      content.style.maxHeight = content.scrollHeight + 'px';
+      requestAnimationFrame(() => {
+        section.classList.add('collapsed');
+      });
+    } else {
+      section.classList.remove('collapsed');
+      content.style.maxHeight = content.scrollHeight + 'px';
+      content.addEventListener('transitionend', () => {
+        if (!section.classList.contains('collapsed')) {
+          content.style.maxHeight = 'none';
+        }
+      }, { once: true });
+    }
+  });
 
   section.append(header, content);
-  return { element: section, content };
+  return { element: section, content: inner };
 }
 
 function createColorRow(
