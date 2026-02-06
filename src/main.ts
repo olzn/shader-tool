@@ -10,21 +10,45 @@ import { createSidebar } from './ui/sidebar';
 import { createTimeControls } from './ui/time-controls';
 import { createCodeEditor } from './ui/code-editor';
 import { createExportPanel } from './ui/export-panel';
-import { loadSavedShaders, saveShader, deleteSavedShader, savedShaderToState, renameSavedShader, encodeShaderUrl, decodeShaderUrl } from './persistence';
+import { loadSavedShaders, saveShader, deleteSavedShader, savedShaderToState, renameSavedShader, encodeShaderUrl, decodeShaderUrl, generateShaderName } from './persistence';
 import { bakeShader } from './export/bake';
 import { hexToVec3, formatFloat } from './compiler';
 import { generateTS } from './export/generate-ts';
 import { generateHTML } from './export/generate-html';
 
-// --- Initialize with blank preset ---
-const blankPreset = getPreset('blank')!;
+// --- Initialize with Glow preset as default ---
+const defaultPreset = getPreset('glow')!;
+
+// Build default effects and params from the glow preset
+const defaultEffects: ActiveEffect[] = [];
+const defaultParams: Record<string, UniformValue> = {};
+
+for (const { blockId } of defaultPreset.effects) {
+  const block = getEffect(blockId);
+  if (!block) continue;
+  const instanceId = generateInstanceId();
+  defaultEffects.push({ instanceId, blockId, enabled: true });
+  for (const param of block.params) {
+    const scopedId = `${instanceId}_${param.id}`;
+    const overrideKey = `${blockId}.${param.id}`;
+    defaultParams[scopedId] = defaultPreset.paramOverrides[overrideKey] ?? param.defaultValue;
+  }
+}
+
+// Apply the specific overrides from the reference shader
+// (waveSpeed 1.2, 3 colors including extra purple)
+for (const ae of defaultEffects) {
+  if (ae.blockId === 'glow-waves') {
+    defaultParams[`${ae.instanceId}_waveSpeed`] = 1.2;
+  }
+}
 
 const initialState: AppState = {
-  shaderName: blankPreset.name,
-  activePresetId: blankPreset.id,
-  activeEffects: [],
-  paramValues: {},
-  colors: blankPreset.colors ?? [],
+  shaderName: defaultPreset.name,
+  activePresetId: defaultPreset.id,
+  activeEffects: defaultEffects,
+  paramValues: defaultParams,
+  colors: ['#432cdc', '#ff7130', '#6110da'],
   compiledFragmentSource: '',
   editorOpen: false,
   editorHeight: 250,
@@ -394,6 +418,15 @@ const sidebar = createSidebar(layout.sidebar, {
     composeAndCompile();
     refreshSidebar();
   },
+  onReorderColors(fromIndex, toIndex) {
+    const colors = [...store.getState().colors];
+    const [moved] = colors.splice(fromIndex, 1);
+    const insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    colors.splice(insertAt, 0, moved);
+    store.setStateWithHistory({ colors, activePresetId: null });
+    composeAndCompile();
+    refreshSidebar();
+  },
   onParamChange(paramId, value) {
     const state = store.getState();
     const newValues = { ...state.paramValues, [paramId]: value };
@@ -509,6 +542,13 @@ function doExport(format: 'ts' | 'html'): void {
 }
 
 function handleSave(): void {
+  const state = store.getState();
+  const genericNames = ['untitled', 'blank', 'glow', 'swirl', 'retro', 'cosmic', 'ocean', 'halftone', 'led bars', 'plasma'];
+  if (!state.shaderName || genericNames.includes(state.shaderName.toLowerCase())) {
+    const autoName = generateShaderName(state);
+    store.setState({ shaderName: autoName });
+    nameInput.value = autoName;
+  }
   saveShader(store.getState());
   sidebar.updateSaved(loadSavedShaders());
 }

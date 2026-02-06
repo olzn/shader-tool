@@ -64,24 +64,31 @@ export const glowPreset: Preset = {
 export const retroPreset: Preset = {
   id: 'retro',
   name: 'Retro',
-  description: 'CRT-styled noise with scanlines',
+  description: 'CRT terminal with warped noise',
   effects: [
-    { blockId: 'noise' },
+    { blockId: 'domain-warp' },
     { blockId: 'crt-scanlines' },
     { blockId: 'chromatic-aberration' },
+    { blockId: 'film-grain' },
     { blockId: 'vignette' },
   ],
   paramOverrides: {
-    'noise.scale': 2.5,
-    'noise.speed': 0.4,
-    'crt-scanlines.lineWidth': 400,
-    'crt-scanlines.intensity': 0.2,
-    'crt-scanlines.flicker': 0.05,
-    'chromatic-aberration.amount': 0.008,
-    'vignette.strength': 0.6,
-    'vignette.radius': 0.6,
+    'domain-warp.noiseScale': 1.2,
+    'domain-warp.warpIntensity': 3.0,
+    'domain-warp.rotation': 20,
+    'domain-warp.driftSpeed1': 0.02,
+    'domain-warp.driftSpeed2': 0.03,
+    'domain-warp.mixLow': 0.2,
+    'domain-warp.mixHigh': 0.8,
+    'crt-scanlines.lineWidth': 500,
+    'crt-scanlines.intensity': 0.25,
+    'crt-scanlines.flicker': 0.04,
+    'chromatic-aberration.amount': 0.012,
+    'film-grain.intensity': 0.06,
+    'vignette.strength': 0.7,
+    'vignette.radius': 0.55,
   },
-  colors: ['#0f380f', '#8bac0f'],
+  colors: ['#0a1a0a', '#33ff66'],
 };
 
 export const cosmicPreset: Preset = {
@@ -181,9 +188,36 @@ export const ledBarsPreset: Preset = {
   colors: ['#1a3a8a', '#ff6a20'],
 };
 
+export const plasmaPreset: Preset = {
+  id: 'plasma',
+  name: 'Plasma',
+  description: 'Polar-warped noise with vivid neon colors',
+  effects: [
+    { blockId: 'polar' },
+    { blockId: 'domain-warp' },
+    { blockId: 'film-grain' },
+    { blockId: 'vignette' },
+  ],
+  paramOverrides: {
+    'polar.scale': 2.5,
+    'polar.rotation': 0,
+    'domain-warp.noiseScale': 0.6,
+    'domain-warp.warpIntensity': 5.0,
+    'domain-warp.rotation': 60,
+    'domain-warp.driftSpeed1': 0.04,
+    'domain-warp.driftSpeed2': 0.05,
+    'domain-warp.mixLow': 0.15,
+    'domain-warp.mixHigh': 0.85,
+    'film-grain.intensity': 0.03,
+    'vignette.strength': 0.4,
+    'vignette.radius': 0.75,
+  },
+  colors: ['#ff00cc', '#00ffcc', '#4400ff'],
+};
+
 export const presets: Preset[] = [
   blankPreset, swirlPreset, glowPreset,
-  retroPreset, cosmicPreset, oceanPreset, halftonePreset, ledBarsPreset,
+  retroPreset, cosmicPreset, oceanPreset, halftonePreset, ledBarsPreset, plasmaPreset,
 ];
 
 export function getPreset(id: string): Preset | undefined {

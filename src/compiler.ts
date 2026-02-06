@@ -49,7 +49,7 @@ export function preprocessAnnotated(
   // Inject uniform declarations after existing uniforms
   if (discoveredParams.length > 0) {
     const declarations = discoveredParams
-      .map(p => `// [shader-tool-param] uniform ${glslType(p.type)} ${p.uniformName};`)
+      .map(p => `// [glint-param] uniform ${glslType(p.type)} ${p.uniformName};`)
       .join('\n') + '\n' +
       discoveredParams
       .map(p => `uniform ${glslType(p.type)} ${p.uniformName};`)

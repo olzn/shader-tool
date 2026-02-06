@@ -2,7 +2,7 @@ import type { AppState } from './types';
 
 type Listener = (state: AppState, prev: AppState) => void;
 
-const AUTOSAVE_KEY = 'shader-tool-autosave';
+const AUTOSAVE_KEY = 'glint-studio-autosave';
 const AUTOSAVE_INTERVAL = 10_000;
 const MAX_HISTORY = 50;
 

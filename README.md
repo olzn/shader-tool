@@ -1,18 +1,19 @@
-# ShaderTool
+# Glint Studio
 
 A browser-based WebGL shader composer with a modular effect system, real-time preview, and export to standalone TypeScript or HTML.
 
-**Live demo:** [https://olzn.github.io/shader-tool/](https://olzn.github.io/shader-tool/)
+**Live demo:** [https://olzn.github.io/glint-studio/](https://olzn.github.io/glint-studio/)
 
 ## Features
 
 - **Modular effects** — Build shaders by combining self-contained effect blocks (generators, post-processing, UV transforms)
 - **Real-time preview** — WebGL canvas with play/pause, reset, and adjustable time scale
-- **Presets** — Blank, Swirl, and Glow presets as starting points (pre-configured effect combinations)
+- **Presets** — Blank, Swirl, Glow, Retro, Cosmic, Ocean, Halftone, LED Bars, and Plasma presets as starting points
 - **Generator layering** — Multiple generator effects blend together using contrast-based compositing
 - **Code viewer** — Read-only CodeMirror 6 editor showing the composed GLSL output
 - **Export** — Generate self-contained TypeScript functions or standalone HTML files with baked parameter values
 - **Save/Load** — Persist shader projects to localStorage with autosave
+- **Share** — Copy shareable URLs with encoded shader state
 
 ## Getting Started
 
@@ -33,17 +34,15 @@ Select a preset from the sidebar to load a pre-configured combination of effects
 
 Click **Add Effect** to open the effect catalog. Effects are grouped by category:
 
-- **UV Transform** — Pixelate
-- **Generators** — Gradient, Noise, Domain Warp, Wave, Glow Waves
-- **Post-Processing** — Brightness, Vignette, Film Grain, CRT Scanlines, Chromatic Aberration
+- **UV Transform** — Pixelate, Diffuse Blur, Polar Coordinates
+- **Generators** — Gradient, Noise, Domain Warp, Wave, Glow Waves, Spiral, Floating Particles, LED Bars
+- **Post-Processing** — Brightness, Vignette, Film Grain, CRT Scanlines, Chromatic Aberration, Dot Grid, ASCII, Dither
 
-Each effect has its own parameter controls (sliders, color pickers). Effects can be toggled on/off or removed individually.
-
-When multiple generators are active, they layer on top of each other — each subsequent generator blends into the existing color based on its pattern contrast.
+Each effect has its own parameter controls (sliders, color pickers). Effects can be toggled on/off, removed, or reordered via drag-and-drop within their category.
 
 ### Colors
 
-Two base colors (Color A and Color B) are always available. Generators use these to produce the color gradient via `mix(colorA, colorB, mixFactor)`.
+Up to 5 colors can be added. Generators use these to produce the color gradient via a `colorRamp()` function. Colors can be reordered by dragging their handles.
 
 ### Code Viewer
 
@@ -62,6 +61,8 @@ The export panel generates production-ready code with all parameter values baked
 |---|---|
 | `Ctrl/Cmd + E` | Toggle code viewer |
 | `Ctrl/Cmd + S` | Save shader |
+| `Ctrl/Cmd + Z` | Undo |
+| `Ctrl/Cmd + Shift + Z` | Redo |
 | `Space` | Play / Pause |
 
 ## Architecture

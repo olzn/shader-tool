@@ -16,7 +16,7 @@ export function bakeShader(
   // Remove uniform declarations first (before replacing references,
   // otherwise the uniform names get replaced with literals and the
   // declaration regex no longer matches).
-  baked = baked.replace(/^\s*\/\/ \[shader-tool-param\] uniform .+;\n?/gm, '');
+  baked = baked.replace(/^\s*\/\/ \[glint-param\] uniform .+;\n?/gm, '');
   for (const param of params) {
     const declRe = new RegExp(`^\\s*uniform\\s+\\w+\\s+${escapeRegex(param.uniformName)}\\s*;\\n?`, 'gm');
     baked = baked.replace(declRe, '');

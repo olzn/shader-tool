@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  base: '/shader-tool/',
+  base: '/glint-studio/',
   build: {
     outDir: 'dist',
   },

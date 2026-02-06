@@ -2,6 +2,7 @@ import type { ActiveEffect, EffectBlock, ShaderParam, UniformValue, Preset, Save
 import { createControls } from './controls';
 import { getAllEffects, getEffect, getEffectsByCategory } from '../effects/index';
 import { renderPresetThumbnail } from './preset-thumbnail';
+import { showToast } from './toast';
 
 const MAX_COLORS = 5;
 
@@ -17,6 +18,7 @@ interface SidebarOptions {
   onColorChange: (index: number, value: string) => void;
   onAddColor: () => void;
   onRemoveColor: (index: number) => void;
+  onReorderColors: (fromIndex: number, toIndex: number) => void;
   onParamChange: (paramId: string, value: UniformValue) => void;
   onAddEffect: (blockId: string) => void;
   onRemoveEffect: (instanceId: string) => void;
@@ -97,8 +99,65 @@ export function createSidebar(
       return;
     }
 
+    let colorDragFrom = -1;
+
     for (let i = 0; i < colors.length; i++) {
       const row = createColorRow(i, colors[i], options.onColorChange, options.onRemoveColor);
+
+      // Drag-and-drop: add handle and events
+      const dragHandle = document.createElement('div');
+      dragHandle.className = 'color-drag-handle';
+      dragHandle.draggable = true;
+      dragHandle.innerHTML = `<svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/><circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/><circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/></svg>`;
+      row.insertBefore(dragHandle, row.firstChild);
+
+      dragHandle.addEventListener('dragstart', (e) => {
+        colorDragFrom = i;
+        row.classList.add('dragging');
+        e.dataTransfer!.effectAllowed = 'move';
+        e.dataTransfer!.setData('text/plain', String(i));
+        e.dataTransfer!.setDragImage(row, 0, 0);
+      });
+
+      row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        colorsContainer.querySelectorAll('.color-row').forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+      });
+
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+        const rect = row.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (e.clientY < midY) {
+          row.classList.add('drag-over-top');
+        } else {
+          row.classList.add('drag-over-bottom');
+        }
+      });
+
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+        const rect = row.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        let toIndex = i;
+        if (e.clientY >= midY && toIndex < colors.length - 1) {
+          toIndex++;
+        }
+        if (colorDragFrom !== -1 && colorDragFrom !== toIndex) {
+          options.onReorderColors(colorDragFrom, toIndex);
+        }
+        colorDragFrom = -1;
+      });
+
       colorsContainer.appendChild(row);
     }
   }
@@ -611,20 +670,15 @@ function renderSavedList(
       });
     });
 
-    // Share button
+    // Copy link button
     const shareBtn = document.createElement('button');
     shareBtn.className = 'btn btn-ghost btn-icon';
     shareBtn.title = 'Copy share link';
-    shareBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="3" cy="6" r="1.5"/><circle cx="9" cy="2.5" r="1.5"/><circle cx="9" cy="9.5" r="1.5"/><path d="M4.3 5.2l3.4-1.9M4.3 6.8l3.4 1.9"/></svg>`;
+    shareBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="1" width="7" height="8" rx="1"/><path d="M1 4v6a1 1 0 001 1h5"/></svg>`;
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       onShare(shader.id);
-      shareBtn.title = 'Copied!';
-      shareBtn.classList.add('copied');
-      setTimeout(() => {
-        shareBtn.title = 'Copy share link';
-        shareBtn.classList.remove('copied');
-      }, 1500);
+      showToast('Link copied to clipboard');
     });
 
     // Delete button with inline confirmation
