@@ -15,9 +15,9 @@ export function generateHTML(opts: GenerateHTMLOptions): string {
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(shader));
+        const info = gl.getShaderInfoLog(shader);
         gl.deleteShader(shader);
-        return null;
+        throw new Error('Shader compile error: ' + info);
       }
       return shader;
     }`;
@@ -116,6 +116,9 @@ ${loadTextureStr}
       gl.attachShader(program, vs);
       gl.attachShader(program, fs);
       gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error('Program link error: ' + gl.getProgramInfoLog(program));
+      }
       gl.useProgram(program);
 
       const buffer = gl.createBuffer();
@@ -167,7 +170,13 @@ ${loadTextureStr}
       };
     }
 
-${invocation}
+    try {
+  ${invocation}
+    } catch (e) {
+      const el = document.getElementById('backdrop');
+      el.style.cssText = 'color:#f55;font:14px/1.5 monospace;padding:24px;white-space:pre-wrap;';
+      el.textContent = e.message;
+    }
   </script>
 </body>
 </html>

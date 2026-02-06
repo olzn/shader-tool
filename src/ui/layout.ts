@@ -20,7 +20,7 @@ export function createLayout(root: HTMLElement): {
   const headerRight = el('div', 'header-right');
 
   const logo = el('div', 'header-logo');
-  logo.innerHTML = '<span>&#9670;</span> ShaderTool';
+  logo.innerHTML = '<span>&#9670;</span>shadertool';
   headerLeft.appendChild(logo);
 
   header.append(headerLeft, headerCenter, headerRight);

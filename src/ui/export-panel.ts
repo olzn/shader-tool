@@ -31,8 +31,10 @@ export function createExportPanel(
   const panel = document.createElement('div');
   panel.className = 'export-panel';
 
-  // Function name
-  const label = document.createElement('label');
+  // Function name field (wrapped in control for consistent styling)
+  const fnField = document.createElement('div');
+  fnField.className = 'control';
+  const label = document.createElement('div');
   label.className = 'control-label';
   label.innerHTML = `<span class="control-label-text">Function Name</span>`;
 
@@ -44,6 +46,8 @@ export function createExportPanel(
   fnInput.addEventListener('change', () => {
     options.onFunctionNameChange(fnInput.value.trim() || 'renderShader');
   });
+
+  fnField.append(label, fnInput);
 
   // Buttons
   const buttons = document.createElement('div');
@@ -60,7 +64,7 @@ export function createExportPanel(
   htmlBtn.addEventListener('click', options.onExportHTML);
 
   buttons.append(tsBtn, htmlBtn);
-  panel.append(label, fnInput, buttons);
+  panel.append(fnField, buttons);
   content.appendChild(panel);
   section.append(header, content);
   container.appendChild(section);

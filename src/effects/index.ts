@@ -8,6 +8,7 @@ import { waveEffect } from './generators/wave';
 import { glowWavesEffect } from './generators/glow-waves';
 import { spiralEffect } from './generators/spiral';
 import { particlesEffect } from './generators/particles';
+import { ledBarsEffect } from './generators/led-bars';
 
 // Post-processing
 import { brightnessEffect } from './post/brightness';
@@ -40,6 +41,7 @@ const allEffects: EffectBlock[] = [
   glowWavesEffect,
   spiralEffect,
   particlesEffect,
+  ledBarsEffect,
   // Post
   brightnessEffect,
   vignetteEffect,

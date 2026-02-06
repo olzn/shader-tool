@@ -61,7 +61,130 @@ export const glowPreset: Preset = {
   colors: ['#432cdc', '#ff7130'],
 };
 
-export const presets: Preset[] = [blankPreset, swirlPreset, glowPreset];
+export const retroPreset: Preset = {
+  id: 'retro',
+  name: 'Retro',
+  description: 'CRT-styled noise with scanlines',
+  effects: [
+    { blockId: 'noise' },
+    { blockId: 'crt-scanlines' },
+    { blockId: 'chromatic-aberration' },
+    { blockId: 'vignette' },
+  ],
+  paramOverrides: {
+    'noise.scale': 2.5,
+    'noise.speed': 0.4,
+    'crt-scanlines.lineWidth': 400,
+    'crt-scanlines.intensity': 0.2,
+    'crt-scanlines.flicker': 0.05,
+    'chromatic-aberration.amount': 0.008,
+    'vignette.strength': 0.6,
+    'vignette.radius': 0.6,
+  },
+  colors: ['#0f380f', '#8bac0f'],
+};
+
+export const cosmicPreset: Preset = {
+  id: 'cosmic',
+  name: 'Cosmic',
+  description: 'Spiral galaxy with particles',
+  effects: [
+    { blockId: 'spiral' },
+    { blockId: 'particles' },
+    { blockId: 'brightness' },
+    { blockId: 'vignette' },
+    { blockId: 'film-grain' },
+  ],
+  paramOverrides: {
+    'spiral.arms': 3,
+    'spiral.tightness': 12,
+    'spiral.speed': 0.2,
+    'spiral.thickness': 0.6,
+    'particles.density': 12,
+    'particles.size': 0.08,
+    'particles.speed': 0.15,
+    'particles.drift': 0.3,
+    'brightness.amount': 0.1,
+    'vignette.strength': 0.4,
+    'vignette.radius': 0.8,
+    'film-grain.intensity': 0.05,
+  },
+  colors: ['#0a0020', '#6a3de8', '#ff6b9d'],
+};
+
+export const oceanPreset: Preset = {
+  id: 'ocean',
+  name: 'Ocean',
+  description: 'Layered waves with soft blur',
+  effects: [
+    { blockId: 'wave' },
+    { blockId: 'diffuse-blur' },
+    { blockId: 'vignette' },
+    { blockId: 'film-grain' },
+  ],
+  paramOverrides: {
+    'wave.frequency': 6.0,
+    'wave.amplitude': 0.4,
+    'wave.speed': 0.3,
+    'wave.angle': 10,
+    'diffuse-blur.amount': 0.03,
+    'diffuse-blur.scale': 30,
+    'diffuse-blur.speed': 0.2,
+    'vignette.strength': 0.3,
+    'vignette.radius': 0.8,
+    'film-grain.intensity': 0.03,
+  },
+  colors: ['#001f3f', '#0074d9', '#7fdbff'],
+};
+
+export const halftonePreset: Preset = {
+  id: 'halftone',
+  name: 'Halftone',
+  description: 'Gradient through a dot-grid filter',
+  effects: [
+    { blockId: 'gradient' },
+    { blockId: 'dot-grid' },
+    { blockId: 'brightness' },
+  ],
+  paramOverrides: {
+    'gradient.angle': 135,
+    'gradient.softness': 0.8,
+    'dot-grid.gridSize': 16,
+    'dot-grid.dotScale': 0.45,
+    'brightness.amount': 0.05,
+  },
+  colors: ['#ff4136', '#ffdc00'],
+};
+
+export const ledBarsPreset: Preset = {
+  id: 'led-bars',
+  name: 'LED Bars',
+  description: 'Noise-driven bars on an LED pixel grid',
+  effects: [
+    { blockId: 'led-bars' },
+    { blockId: 'vignette' },
+  ],
+  paramOverrides: {
+    'led-bars.columns': 48,
+    'led-bars.rows': 30,
+    'led-bars.cellGap': 0.25,
+    'led-bars.cellRound': 0.3,
+    'led-bars.noiseScale': 1.5,
+    'led-bars.vertStretch': 3.0,
+    'led-bars.barWidth': 0.5,
+    'led-bars.speed': 0.15,
+    'led-bars.brightness': 0.9,
+    'led-bars.bgDarkness': 0.06,
+    'vignette.strength': 0.3,
+    'vignette.radius': 0.85,
+  },
+  colors: ['#1a3a8a', '#ff6a20'],
+};
+
+export const presets: Preset[] = [
+  blankPreset, swirlPreset, glowPreset,
+  retroPreset, cosmicPreset, oceanPreset, halftonePreset, ledBarsPreset,
+];
 
 export function getPreset(id: string): Preset | undefined {
   return presets.find(p => p.id === id);

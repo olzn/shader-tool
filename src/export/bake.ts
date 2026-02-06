@@ -13,20 +13,21 @@ export function bakeShader(
 ): string {
   let baked = source;
 
+  // Remove uniform declarations first (before replacing references,
+  // otherwise the uniform names get replaced with literals and the
+  // declaration regex no longer matches).
+  baked = baked.replace(/^\s*\/\/ \[shader-tool-param\] uniform .+;\n?/gm, '');
+  for (const param of params) {
+    const declRe = new RegExp(`^\\s*uniform\\s+\\w+\\s+${escapeRegex(param.uniformName)}\\s*;\\n?`, 'gm');
+    baked = baked.replace(declRe, '');
+  }
+
   // Replace each uniform reference with its literal value
   for (const param of params) {
     const value = values[param.id] ?? param.defaultValue;
     const literal = toGlslLiteral(param.type, value);
     const re = new RegExp(`\\b${escapeRegex(param.uniformName)}\\b`, 'g');
     baked = baked.replace(re, literal);
-  }
-
-  // Remove injected uniform declarations (marked with [shader-tool-param])
-  baked = baked.replace(/^\s*\/\/ \[shader-tool-param\] uniform .+;\n?/gm, '');
-  // Remove the actual uniform declarations for tool params
-  for (const param of params) {
-    const declRe = new RegExp(`^\\s*uniform\\s+\\w+\\s+${escapeRegex(param.uniformName)}\\s*;\\n?`, 'gm');
-    baked = baked.replace(declRe, '');
   }
 
   // Clean up double blank lines
@@ -38,6 +39,7 @@ export function bakeShader(
 function toGlslLiteral(type: string, value: UniformValue): string {
   switch (type) {
     case 'float':
+    case 'select':
       return formatFloat(value as number);
     case 'int':
       return String(Math.round(value as number));
