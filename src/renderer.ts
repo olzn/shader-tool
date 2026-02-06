@@ -15,6 +15,15 @@ export class Renderer {
   private _timeScale = 1.0;
   private pausedTime = 0;
   private observer: ResizeObserver | null = null;
+  private wasPlayingBeforeHidden = false;
+  private onVisibilityChange = (): void => {
+    if (document.hidden) {
+      this.wasPlayingBeforeHidden = this._playing;
+      if (this._playing) this.pause();
+    } else {
+      if (this.wasPlayingBeforeHidden) this.play();
+    }
+  };
 
   // Uniform state
   private uniformLocations = new Map<string, WebGLUniformLocation | null>();
@@ -55,6 +64,9 @@ export class Renderer {
     this.observer = new ResizeObserver(() => this.resize());
     this.observer.observe(this.container);
     this.resize();
+
+    // Pause render when tab is hidden
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
 
     // Start time
     this.startTime = performance.now();
@@ -257,6 +269,7 @@ export class Renderer {
 
   destroy(): void {
     cancelAnimationFrame(this.rafId);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.observer?.disconnect();
     if (this.gl) {
       if (this.buffer) this.gl.deleteBuffer(this.buffer);

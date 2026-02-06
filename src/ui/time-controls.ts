@@ -23,6 +23,7 @@ export function createTimeControls(
   const playBtn = document.createElement('button');
   playBtn.className = 'btn btn-ghost btn-icon';
   playBtn.title = 'Play/Pause (Space)';
+  playBtn.setAttribute('aria-label', 'Play/Pause');
   playBtn.innerHTML = pauseIcon();
 
   playBtn.addEventListener('click', () => {
@@ -36,6 +37,7 @@ export function createTimeControls(
   const resetBtn = document.createElement('button');
   resetBtn.className = 'btn btn-ghost btn-icon';
   resetBtn.title = 'Reset time';
+  resetBtn.setAttribute('aria-label', 'Reset time');
   resetBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 6a4 4 0 1 1 1.17 2.83"/><path d="M2 9V6h3"/></svg>`;
   resetBtn.addEventListener('click', options.onReset);
 

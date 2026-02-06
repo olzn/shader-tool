@@ -129,9 +129,14 @@ const nameInput = document.createElement('input');
 nameInput.type = 'text';
 nameInput.className = 'sidebar-shader-name';
 nameInput.placeholder = 'Shader name…';
+nameInput.spellcheck = false;
+nameInput.autocomplete = 'off';
 nameInput.value = store.getState().shaderName;
 nameInput.addEventListener('change', () => {
   store.setState({ shaderName: nameInput.value.trim() || 'Untitled' });
+});
+nameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
 });
 
 // --- Time controls ---
@@ -161,6 +166,7 @@ renderer.onTimeUpdate = (time) => {
 const undoBtn = document.createElement('button');
 undoBtn.className = 'btn btn-ghost btn-icon';
 undoBtn.title = 'Undo (Ctrl+Z)';
+undoBtn.setAttribute('aria-label', 'Undo');
 undoBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h7a3 3 0 0 1 0 6H8"/><path d="M5 5L3 7l2 2"/></svg>`;
 undoBtn.disabled = !store.canUndo;
 undoBtn.addEventListener('click', handleUndo);
@@ -169,6 +175,7 @@ layout.headerRight.appendChild(undoBtn);
 const redoBtn = document.createElement('button');
 redoBtn.className = 'btn btn-ghost btn-icon';
 redoBtn.title = 'Redo (Ctrl+Shift+Z)';
+redoBtn.setAttribute('aria-label', 'Redo');
 redoBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 7H4a3 3 0 0 0 0 6h2"/><path d="M9 5l2 2-2 2"/></svg>`;
 redoBtn.disabled = !store.canRedo;
 redoBtn.addEventListener('click', handleRedo);
@@ -179,9 +186,13 @@ store.onHistoryChange(() => {
   redoBtn.disabled = !store.canRedo;
   undoBtn.style.opacity = store.canUndo ? '1' : '0.3';
   redoBtn.style.opacity = store.canRedo ? '1' : '0.3';
+  undoBtn.title = store.canUndo ? 'Undo (Ctrl+Z)' : '';
+  redoBtn.title = store.canRedo ? 'Redo (Ctrl+Shift+Z)' : '';
 });
 undoBtn.style.opacity = '0.3';
+undoBtn.title = '';
 redoBtn.style.opacity = '0.3';
+redoBtn.title = '';
 
 function handleUndo(): void {
   if (!store.undo()) return;
@@ -543,6 +554,7 @@ function doExport(format: 'ts' | 'html'): void {
 }
 
 function handleSave(): void {
+  saveBtn.disabled = true;
   const state = store.getState();
   const genericNames = ['untitled', 'blank', 'glow', 'swirl', 'retro', 'cosmic', 'ocean', 'halftone', 'led bars', 'plasma'];
   if (!state.shaderName || genericNames.includes(state.shaderName.toLowerCase())) {
@@ -552,6 +564,7 @@ function handleSave(): void {
   }
   saveShader(store.getState());
   sidebar.updateSaved(loadSavedShaders());
+  saveBtn.disabled = false;
 }
 
 function downloadFile(content: string, filename: string, mimeType: string): void {

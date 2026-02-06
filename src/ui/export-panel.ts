@@ -43,8 +43,13 @@ export function createExportPanel(
   fnInput.className = 'export-fn-input';
   fnInput.value = options.functionName;
   fnInput.placeholder = 'renderShader';
+  fnInput.spellcheck = false;
+  fnInput.autocomplete = 'off';
   fnInput.addEventListener('change', () => {
     options.onFunctionNameChange(fnInput.value.trim() || 'renderShader');
+  });
+  fnInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); fnInput.blur(); }
   });
 
   fnField.append(label, fnInput);

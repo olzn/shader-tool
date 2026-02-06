@@ -77,7 +77,13 @@ export function createSidebar(
         <span class="preset-row-desc">${preset.description}</span>
       </div>
     `;
+    row.tabIndex = 0;
     row.addEventListener('click', () => options.onPresetSelect(preset.id));
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); options.onPresetSelect(preset.id); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); (row.nextElementSibling as HTMLElement)?.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); (row.previousElementSibling as HTMLElement)?.focus(); }
+    });
     presetList.appendChild(row);
   }
 
@@ -224,6 +230,7 @@ export function createSidebar(
 
     const closeBtn = document.createElement('button');
     closeBtn.className = 'btn btn-ghost btn-icon';
+    closeBtn.setAttribute('aria-label', 'Close catalog');
     closeBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l6 6M9 3l-6 6"/></svg>`;
     closeBtn.addEventListener('click', () => {
       catalogEl?.remove();
@@ -440,6 +447,7 @@ export function createSidebar(
         const removeBtn = document.createElement('button');
         removeBtn.className = 'btn btn-ghost btn-icon effect-remove-btn';
         removeBtn.title = 'Remove effect';
+        removeBtn.setAttribute('aria-label', 'Remove effect');
         removeBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l6 6M9 3l-6 6"/></svg>`;
         removeBtn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -628,6 +636,7 @@ function createColorRow(
   const removeBtn = document.createElement('button');
   removeBtn.className = 'btn btn-ghost btn-icon color-remove-btn';
   removeBtn.title = 'Remove color';
+  removeBtn.setAttribute('aria-label', 'Remove color');
   removeBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l6 6M9 3l-6 6"/></svg>`;
   removeBtn.addEventListener('click', () => onRemove(index));
   wrap.appendChild(removeBtn);
@@ -676,6 +685,7 @@ function renderSavedList(
     const renameBtn = document.createElement('button');
     renameBtn.className = 'btn btn-ghost btn-icon';
     renameBtn.title = 'Rename';
+    renameBtn.setAttribute('aria-label', 'Rename');
     renameBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/></svg>`;
     renameBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -707,6 +717,7 @@ function renderSavedList(
     const shareBtn = document.createElement('button');
     shareBtn.className = 'btn btn-ghost btn-icon';
     shareBtn.title = 'Copy share link';
+    shareBtn.setAttribute('aria-label', 'Copy share link');
     shareBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="1" width="7" height="8" rx="1"/><path d="M1 4v6a1 1 0 001 1h5"/></svg>`;
     shareBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -719,6 +730,7 @@ function renderSavedList(
     deleteBtn.className = 'btn btn-ghost btn-icon';
     deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h8M4.5 3V2h3v1M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3"/></svg>`;
     deleteBtn.title = 'Delete';
+    deleteBtn.setAttribute('aria-label', 'Delete');
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       // Replace actions with inline confirm
@@ -744,7 +756,14 @@ function renderSavedList(
 
     actions.append(renameBtn, shareBtn, deleteBtn);
     item.append(info, actions);
+    item.tabIndex = 0;
     item.addEventListener('click', () => onLoad(shader.id));
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); onLoad(shader.id); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); (item.nextElementSibling as HTMLElement)?.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); (item.previousElementSibling as HTMLElement)?.focus(); }
+      if (e.key === 'Backspace' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onDelete(shader.id); }
+    });
     list.appendChild(item);
   }
 
