@@ -1,6 +1,7 @@
 import type { ActiveEffect, EffectBlock, ShaderParam, UniformValue, Preset, SavedShader } from '../types';
 import { createControls } from './controls';
 import { getAllEffects, getEffect, getEffectsByCategory } from '../effects/index';
+import { renderPresetThumbnail } from './preset-thumbnail';
 
 const MAX_COLORS = 5;
 
@@ -20,6 +21,7 @@ interface SidebarOptions {
   onAddEffect: (blockId: string) => void;
   onRemoveEffect: (instanceId: string) => void;
   onToggleEffect: (instanceId: string, enabled: boolean) => void;
+  onReorderEffects: (fromIndex: number, toIndex: number) => void;
   onSave: () => void;
   onLoadSaved: (id: string) => void;
   onDeleteSaved: (id: string) => void;
@@ -32,6 +34,7 @@ export function createSidebar(
   options: SidebarOptions
 ): {
   updateEffects: (effects: ActiveEffect[], params: ShaderParam[], values: Record<string, UniformValue>) => void;
+  toggleEffectEnabled: (instanceId: string, enabled: boolean) => void;
   updateColors: (colors: string[]) => void;
   updatePreset: (id: string | null) => void;
   updateSaved: (saved: SavedShader[]) => void;
@@ -48,7 +51,14 @@ export function createSidebar(
     const card = document.createElement('div');
     card.className = 'template-card' + (preset.id === options.activePresetId ? ' active' : '');
     card.dataset.presetId = preset.id;
+
+    const thumbnail = renderPresetThumbnail(preset);
+    const previewHtml = thumbnail
+      ? `<div class="template-card-preview"><img src="${thumbnail}" style="width:100%;height:100%;object-fit:cover;display:block" /></div>`
+      : '';
+
     card.innerHTML = `
+      ${previewHtml}
       <div class="template-card-name">${preset.name}</div>
       <div class="template-card-desc">${preset.description}</div>
     `;
@@ -185,8 +195,24 @@ export function createSidebar(
 
   // Track per-effect controls for cleanup
   const effectControls: Map<string, ReturnType<typeof createControls>> = new Map();
+  // Track which effects have their controls expanded (default is collapsed)
+  const expandedEffects = new Set<string>();
+  let previousEffectIds = new Set(options.activeEffects.map(ae => ae.instanceId));
 
   function renderEffects(effects: ActiveEffect[], params: ShaderParam[], values: Record<string, UniformValue>) {
+    // Auto-expand newly added effects
+    for (const ae of effects) {
+      if (!previousEffectIds.has(ae.instanceId)) {
+        expandedEffects.add(ae.instanceId);
+      }
+    }
+    // Clean up expanded state for removed effects
+    for (const id of expandedEffects) {
+      if (!effects.some(ae => ae.instanceId === id)) {
+        expandedEffects.delete(id);
+      }
+    }
+    previousEffectIds = new Set(effects.map(ae => ae.instanceId));
     effectsContainer.innerHTML = '';
     for (const ctrl of effectControls.values()) ctrl.destroy();
     effectControls.clear();
@@ -199,13 +225,65 @@ export function createSidebar(
       return;
     }
 
-    for (const ae of effects) {
+    let dragFromIndex = -1;
+
+    for (let idx = 0; idx < effects.length; idx++) {
+      const ae = effects[idx];
       const block = getEffect(ae.blockId);
       if (!block) continue;
 
       const item = document.createElement('div');
       item.className = 'effect-item' + (ae.enabled ? '' : ' disabled');
       item.dataset.instanceId = ae.instanceId;
+      item.dataset.index = String(idx);
+      item.draggable = true;
+
+      // Drag-and-drop handlers
+      item.addEventListener('dragstart', (e) => {
+        dragFromIndex = idx;
+        item.classList.add('dragging');
+        e.dataTransfer!.effectAllowed = 'move';
+        e.dataTransfer!.setData('text/plain', String(idx));
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        effectsContainer.querySelectorAll('.effect-item').forEach(el => {
+          el.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (e.clientY < midY) {
+          item.classList.add('drag-over-top');
+        } else {
+          item.classList.add('drag-over-bottom');
+        }
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        item.classList.remove('drag-over-top', 'drag-over-bottom');
+        const rect = item.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        let toIndex = idx;
+        if (e.clientY >= midY && toIndex < effects.length - 1) {
+          toIndex++;
+        }
+        if (dragFromIndex !== -1 && dragFromIndex !== toIndex) {
+          options.onReorderEffects(dragFromIndex, toIndex);
+        }
+        dragFromIndex = -1;
+      });
 
       // Header row
       const header = document.createElement('div');
@@ -213,6 +291,11 @@ export function createSidebar(
 
       const leftSide = document.createElement('div');
       leftSide.className = 'effect-item-left';
+
+      // Drag handle
+      const dragHandle = document.createElement('div');
+      dragHandle.className = 'effect-drag-handle';
+      dragHandle.innerHTML = `<svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/><circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/><circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/></svg>`;
 
       const toggle = document.createElement('input');
       toggle.type = 'checkbox';
@@ -226,7 +309,18 @@ export function createSidebar(
       nameSpan.className = 'effect-item-name';
       nameSpan.textContent = block.name;
 
-      leftSide.append(toggle, nameSpan);
+      // Category badge
+      const badge = document.createElement('span');
+      badge.className = 'effect-category-badge';
+      const categoryLabels: Record<string, string> = {
+        'uv-transform': 'UV',
+        'generator': 'GEN',
+        'post': 'POST',
+      };
+      badge.textContent = categoryLabels[block.category] ?? block.category;
+      badge.dataset.category = block.category;
+
+      leftSide.append(dragHandle, toggle, nameSpan, badge);
 
       const removeBtn = document.createElement('button');
       removeBtn.className = 'btn btn-ghost btn-icon effect-remove-btn';
@@ -243,6 +337,12 @@ export function createSidebar(
       const controlsContainer = document.createElement('div');
       controlsContainer.className = 'effect-item-controls';
 
+      // Default to collapsed unless explicitly expanded; newly added effects start expanded
+      const isExpanded = expandedEffects.has(ae.instanceId);
+      if (!isExpanded) {
+        controlsContainer.style.display = 'none';
+      }
+
       // Get this instance's params (scoped by instanceId)
       const instanceParams = params.filter(p => p.id.startsWith(ae.instanceId + '_'));
       const instanceValues: Record<string, UniformValue> = {};
@@ -258,11 +358,15 @@ export function createSidebar(
       effectControls.set(ae.instanceId, ctrl);
 
       // Toggle expand/collapse on name click
-      let expanded = true;
       nameSpan.style.cursor = 'pointer';
       nameSpan.addEventListener('click', () => {
-        expanded = !expanded;
-        controlsContainer.style.display = expanded ? '' : 'none';
+        if (expandedEffects.has(ae.instanceId)) {
+          expandedEffects.delete(ae.instanceId);
+          controlsContainer.style.display = 'none';
+        } else {
+          expandedEffects.add(ae.instanceId);
+          controlsContainer.style.display = '';
+        }
       });
 
       item.append(header, controlsContainer);
@@ -276,6 +380,13 @@ export function createSidebar(
   return {
     updateEffects(effects, params, values) {
       renderEffects(effects, params, values);
+    },
+    /** Lightweight update: toggle an effect's enabled visual without full re-render. */
+    toggleEffectEnabled(instanceId: string, enabled: boolean) {
+      const item = effectsContainer.querySelector(`[data-instance-id="${instanceId}"]`);
+      if (item) {
+        item.classList.toggle('disabled', !enabled);
+      }
     },
     updateColors(colors) {
       renderColors(colors);
@@ -458,14 +569,32 @@ function renderSavedList(
       }, 1500);
     });
 
-    // Delete button
+    // Delete button with inline confirmation
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn btn-ghost btn-icon';
     deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h8M4.5 3V2h3v1M3 3v7a1 1 0 001 1h4a1 1 0 001-1V3"/></svg>`;
     deleteBtn.title = 'Delete';
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      onDelete(shader.id);
+      // Replace actions with inline confirm
+      actions.innerHTML = '';
+      const confirm = document.createElement('div');
+      confirm.className = 'inline-confirm';
+      confirm.innerHTML = `<span class="inline-confirm-label">Delete?</span>`;
+      const yesBtn = document.createElement('button');
+      yesBtn.className = 'btn btn-ghost btn-icon inline-confirm-yes';
+      yesBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2.5 6.5l2.5 2.5 5-5"/></svg>`;
+      yesBtn.addEventListener('click', (ev) => { ev.stopPropagation(); onDelete(shader.id); });
+      const noBtn = document.createElement('button');
+      noBtn.className = 'btn btn-ghost btn-icon inline-confirm-no';
+      noBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l6 6M9 3l-6 6"/></svg>`;
+      noBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        confirm.remove();
+        actions.append(renameBtn, shareBtn, deleteBtn);
+      });
+      confirm.append(yesBtn, noBtn);
+      actions.appendChild(confirm);
     });
 
     actions.append(renameBtn, shareBtn, deleteBtn);

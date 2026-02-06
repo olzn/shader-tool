@@ -32,8 +32,9 @@ export function compose(activeEffects: ActiveEffect[], colorCount: number = 0): 
     enabledEffects.push({ effect: ae, block });
   }
 
-  // Sort: uv-transform (0-99) < generator (100-199) < post (200-299)
-  enabledEffects.sort((a, b) => a.block.order - b.block.order);
+  // Sort by category bucket (uv < generator < post) but preserve user order within each category
+  const categoryBucket = (order: number) => Math.floor(order / 100);
+  enabledEffects.sort((a, b) => categoryBucket(a.block.order) - categoryBucket(b.block.order));
 
   // Collect required utils
   for (const { block } of enabledEffects) {
